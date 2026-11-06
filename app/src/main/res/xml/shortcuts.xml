@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 정적 앱 바로가기: 삼성 모드 및 루틴 등에서 "앱 세부 동작"으로 노출된다. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="start_detection"
+        android:enabled="true"
+        android:icon="@drawable/ic_tunnel"
+        android:shortcutShortLabel="@string/shortcut_start_short"
+        android:shortcutLongLabel="@string/shortcut_start_long">
+        <intent
+            android:action="com.tunnelac.app.action.START"
+            android:targetPackage="com.tunnelac.app"
+            android:targetClass="com.tunnelac.app.ShortcutActionActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="stop_detection"
+        android:enabled="true"
+        android:icon="@drawable/ic_tunnel"
+        android:shortcutShortLabel="@string/shortcut_stop_short"
+        android:shortcutLongLabel="@string/shortcut_stop_long">
+        <intent
+            android:action="com.tunnelac.app.action.STOP"
+            android:targetPackage="com.tunnelac.app"
+            android:targetClass="com.tunnelac.app.ShortcutActionActivity" />
+    </shortcut>
+</shortcuts>

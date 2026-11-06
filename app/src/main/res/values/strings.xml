@@ -1,0 +1,73 @@
+<resources>
+    <string name="app_name">Tunnel AC</string>
+
+    <string name="nav_map">지도</string>
+    <string name="nav_status">상태</string>
+    <string name="nav_settings">설정</string>
+    <string name="nav_log">로그</string>
+
+    <string name="shortcut_start_short">시작</string>
+    <string name="shortcut_start_long">터널 감지 시작</string>
+    <string name="shortcut_stop_short">정지</string>
+    <string name="shortcut_stop_long">터널 감지 정지</string>
+
+    <string name="notif_channel_name">터널 감지 실행 중</string>
+    <string name="notif_title_running">Tunnel AC 실행 중</string>
+    <string name="notif_action_stop">정지</string>
+
+    <string name="status_engine_idle">대기 중</string>
+    <string name="status_engine_approaching">터널 접근 중</string>
+    <string name="status_engine_in_tunnel">터널 안 (내기순환 ON)</string>
+    <string name="status_service_stopped">서비스 정지됨</string>
+    <string name="status_service_running">서비스 실행 중</string>
+
+    <string name="btn_start">시작</string>
+    <string name="btn_stop">정지</string>
+    <string name="btn_refresh_tunnels">터널 데이터 갱신</string>
+    <string name="btn_refresh_resume">터널 데이터 이어받기 (%1$d/%2$d 완료)</string>
+    <string name="btn_refresh_stop">받기 중지</string>
+    <string name="btn_save_settings">설정 저장</string>
+    <string name="btn_export_csv">CSV로 내보내기</string>
+    <string name="btn_clear_log">로그 삭제</string>
+    <string name="dialog_clear_log_title">로그 삭제</string>
+    <string name="dialog_clear_log_message">기록된 이벤트를 모두 삭제할까요? 되돌릴 수 없습니다.</string>
+    <string name="dialog_delete">삭제</string>
+    <string name="dialog_cancel">취소</string>
+    <string name="toast_log_cleared">로그를 삭제했습니다.</string>
+
+    <string name="label_entry_distance">진입 트리거 거리</string>
+    <string name="label_exit_distance">진출 트리거 거리</string>
+    <string name="label_corridor_width">도로 근접 허용치</string>
+    <string name="label_heading_tolerance">진행방향 허용 각도</string>
+    <string name="label_min_speed">최소 속도</string>
+    <string name="label_merge_gap">연속 터널 병합 간격</string>
+    <string name="label_max_hold">최대 유지 시간</string>
+    <string name="label_min_tunnel_length">최소 터널 길이</string>
+
+    <string name="label_exit_fresh">터널 진출 시 외기로 전환</string>
+    <string name="help_exit_fresh">끄면 외기로 강제하지 않고, 터널에서 걸어 둔 내기순환 강제만 해제해 차량 오토에 맡깁니다.</string>
+
+    <string name="label_relay_section">리어 디스플레이 릴레이 (BLE)</string>
+    <string name="label_relay_enabled">릴레이로 실제 차량 공조 제어</string>
+    <string name="hint_relay_pin">릴레이 앱 화면에 표시된 PIN</string>
+    <string name="label_relay_test">릴레이 테스트 (선택한 모드를 차량으로 전송)</string>
+    <string name="btn_test_relay">내기</string>
+    <string name="btn_test_relay_fresh">외기</string>
+    <string name="btn_test_relay_auto">오토</string>
+    <string name="relay_pin_help">리어 디스플레이의 릴레이 앱을 켜고 화면에 보이는 PIN(6자리)을 입력하세요. 페어링은 필요 없습니다.</string>
+
+    <string name="settings_title">터널 구간 내기전환</string>
+    <string name="settings_subtitle">터널 진입 시 내기순환, 진출 시 자동 복귀</string>
+    <string name="card_detect">감지 설정</string>
+    <string name="card_tunnel">터널 처리</string>
+    <string name="card_exit">진출 동작</string>
+    <string name="card_sound">알림음</string>
+    <string name="label_sound_enabled">전환 시 알림음</string>
+    <string name="help_sound">진입 시 콜사인음, 내기가 해제될 때(정상·안전·강제 진출) 띠리링 소리가 납니다.</string>
+    <string name="label_sound_volume">소리 크기</string>
+    <string name="btn_preview_entry">▶ 진입음 미리듣기</string>
+    <string name="btn_preview_exit">▶ 진출음 미리듣기</string>
+    <string name="card_data">터널 데이터</string>
+
+    <string name="log_empty">기록된 이벤트가 없습니다.</string>
+</resources>
