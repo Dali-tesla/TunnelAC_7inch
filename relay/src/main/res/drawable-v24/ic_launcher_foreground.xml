@@ -1,0 +1,41 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 터널 입구(아치) 링 -->
+    <path
+        android:fillColor="#29B6F6"
+        android:pathData="M18,108 L18,54 A36,36 0 0 1 90,54 L90,108 Z" />
+    <!-- 터널 내부(어두운 구멍) -->
+    <path
+        android:fillColor="#12212B"
+        android:pathData="M23,108 L23,54 A31,31 0 0 1 85,54 L85,108 Z" />
+    <!-- 터널 안의 차량 외곽선(흰색) + 내기순환 화살표(흰색). 로컬 좌표(44x24)를 확대해 배치 -->
+    <group
+        android:scaleX="1.136"
+        android:scaleY="1.136"
+        android:translateX="29"
+        android:translateY="50">
+        <!-- 차량 측면 실루엣: 루프 - 전면 - 앞바퀴 아치 - 하부 - 뒷바퀴 아치 - 후면 -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.3"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M11,1 L33,1 L38.5,12 L41.5,13 Q43,13.5 43,15.5 L43,21 Q43,24 41.5,24 A5.5,5.5 0 0 0 30.5,24 L13.5,24 A5.5,5.5 0 0 0 2.5,24 Q1,24 1,21 L1,15.5 Q1,13.5 2.5,13 L5.5,12 Z" />
+        <!-- 바퀴 (앞/뒤) -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M5,24 A3,3 0 1 0 11,24 A3,3 0 1 0 5,24 Z M33,24 A3,3 0 1 0 39,24 A3,3 0 1 0 33,24 Z" />
+        <!-- 내기순환 화살표 (U턴 루프 + 화살촉) -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.3"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M29.5,11.5 L29.5,10.5 A2.5,2.5 0 0 0 27,8 L19,8 A3,3 0 0 0 16,11 L16,13.5 A3,3 0 0 0 19,16.5 L29.5,16.5 M26,13 L29.5,16.5 L26,20" />
+    </group>
+</vector>

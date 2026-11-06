@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Tunnel AC 릴레이</string>
+    <string name="relay_subtitle">폰 앱의 공조 명령을 BLE 로 받아 차량 CAN 으로 전달합니다.</string>
+    <string name="pin_label">폰 앱 설정에 입력할 PIN</string>
+    <string name="btn_save_pin">저장</string>
+    <string name="btn_start_relay">릴레이 서비스 시작</string>
+    <string name="btn_stop_relay">릴레이 서비스 정지</string>
+    <string name="local_test_title">로컬 테스트 (이 기기에서 직접 CAN 전송)</string>
+    <string name="mode_recirc">내기순환</string>
+    <string name="mode_fresh">외기</string>
+    <string name="mode_auto">오토</string>
+    <string name="log_title">로그</string>
+    <string name="btn_force_toggle">내기/외기 키 강제 전송 (상태 무시, 테스트용)</string>
+    <string name="btn_ble_retry">BLE 다시 시도 (자동 차단 해제)</string>
+</resources>

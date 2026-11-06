@@ -1,0 +1,2 @@
+# 이 파일을 local.properties 로 복사한 뒤 값을 채우세요. local.properties 는 git에 커밋하지 않습니다.
+sdk.dir=/path/to/Android/sdk
