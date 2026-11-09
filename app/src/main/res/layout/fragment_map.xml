@@ -34,4 +34,103 @@
         app:strokeColor="@color/accent_variant"
         app:strokeWidth="1.5dp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_zone_toggle"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="76dp"
+        android:backgroundTint="@color/bg_surface"
+        android:text="구역 보기"
+        android:textColor="@color/accent"
+        android:textStyle="bold"
+        app:cornerRadius="24dp"
+        app:strokeColor="@color/accent_variant"
+        app:strokeWidth="1.5dp" />
+
+    <LinearLayout
+        android:id="@+id/zone_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="150dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/bg_surface"
+        android:orientation="vertical"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_zone_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/on_bg"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_zone_update"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="6dp"
+            android:text="전체 다시 받기"
+            android:textColor="@color/accent"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/accent_variant"
+            app:strokeWidth="1.5dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_zone_supplement"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="6dp"
+            android:text="건너뛴 것만 받기"
+            android:textColor="@color/accent"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/accent_variant"
+            app:strokeWidth="1.5dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/tunnel_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="150dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/bg_surface"
+        android:orientation="vertical"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_tunnel_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/on_bg"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_tunnel_update"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="6dp"
+            android:text="이 터널만 갱신"
+            android:textColor="@color/accent"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/accent_variant"
+            app:strokeWidth="1.5dp" />
+    </LinearLayout>
+
 </FrameLayout>

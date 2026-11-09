@@ -13,8 +13,8 @@ android {
         // 리어 디스플레이(안드로이드 11)에서만 동작하므로 targetSdk 30 으로 두어
         // Android 12+ 의 포그라운드 서비스 타입/권한 강제와 무관하게 단순하게 유지한다.
         targetSdk = 30
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     buildTypes {

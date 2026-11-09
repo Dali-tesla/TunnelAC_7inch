@@ -598,6 +598,19 @@
             app:cornerRadius="14dp"
             app:strokeColor="@color/accent_variant"
             app:strokeWidth="1.5dp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_supplement_approach"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/btn_supplement_approach"
+                android:textColor="@color/accent"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:cornerRadius="14dp"
+                app:strokeColor="@color/accent_variant"
+                app:strokeWidth="1.5dp" />
             <ProgressBar
                 android:id="@+id/progress_refresh"
                 style="?android:attr/progressBarStyleHorizontal"
@@ -614,6 +627,48 @@
                 android:textColor="@color/accent"
                 android:textStyle="bold"
                 android:visibility="gone" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_export_tunnels"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:text="@string/btn_export_tunnels"
+                    android:textColor="@color/accent"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="14dp"
+                    app:strokeColor="@color/accent_variant"
+                    app:strokeWidth="1.5dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_import_tunnels"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:text="@string/btn_import_tunnels"
+                    android:textColor="@color/accent"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="14dp"
+                    app:strokeColor="@color/accent_variant"
+                    app:strokeWidth="1.5dp" />
+            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/help_tunnel_share"
+                android:textColor="@color/on_bg_secondary"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout

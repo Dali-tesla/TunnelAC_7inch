@@ -1,6 +1,9 @@
 package com.tunnelac.app.ui
 
 import android.Manifest
+import android.app.AlertDialog
+import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,20 +17,26 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.tunnelac.app.BuildConfig
 import com.tunnelac.app.R
 import com.tunnelac.app.SoundPlayer
 import com.tunnelac.app.data.Prefs
 import com.tunnelac.app.data.TunnelRefresher
 import com.tunnelac.app.data.TunnelRepository
 import com.tunnelac.app.engine.EngineConfig
+import com.tunnelac.app.export.TunnelDataIO
 import com.tunnelac.app.hvac.HvacState
 import com.tunnelac.app.hvac.relay.BleRelayHvacController
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
@@ -36,6 +45,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     // 블루투스(근처 기기) 권한 요청 후 실행할 동작
     private var pendingBtAction: (() -> Unit)? = null
+    /** 가져올 .tac 파일을 고르는 시스템 파일 선택기. */
+    private val pickTacFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null && view != null) onTacPicked(uri)
+    }
+
     private val requestBtPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
@@ -162,6 +176,23 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         val btnRefresh = view.findViewById<Button>(R.id.btn_refresh_tunnels)
         TunnelRefresher.refreshIdleState(requireContext())
         btnRefresh.setOnClickListener { TunnelRefresher.toggle(requireContext()) }
+        view.findViewById<Button>(R.id.btn_supplement_approach).setOnClickListener {
+            if (TunnelRefresher.isRunning) {
+                Toast.makeText(requireContext(), "받는 중에는 보완할 수 없습니다. 끝난 뒤 다시 눌러 주세요.", Toast.LENGTH_LONG).show()
+            } else {
+                TunnelRefresher.startSupplement(requireContext())
+            }
+        }
+
+        // 터널 데이터 내보내기/가져오기(.tac): 받은 데이터를 다른 사람에게 주면 가져오기로 바로 적용된다.
+        view.findViewById<Button>(R.id.btn_export_tunnels).setOnClickListener { exportTunnelData() }
+        view.findViewById<Button>(R.id.btn_import_tunnels).setOnClickListener {
+            if (TunnelRefresher.isRunning) {
+                Toast.makeText(requireContext(), "터널 데이터를 받는 중에는 가져올 수 없습니다. 받기를 중지한 뒤 다시 시도해 주세요.", Toast.LENGTH_LONG).show()
+            } else {
+                pickTacFile.launch(arrayOf("*/*"))
+            }
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -191,6 +222,62 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     override fun onDestroyView() {
         SoundPlayer.stop()
         super.onDestroyView()
+    }
+
+    private fun exportTunnelData() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val file = TunnelDataIO.export(requireContext())
+                val uri = FileProvider.getUriForFile(requireContext(), "${BuildConfig.APPLICATION_ID}.fileprovider", file)
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/octet-stream"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Tunnel AC 터널 데이터 (OpenStreetMap contributors, ODbL)")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                startActivity(Intent.createChooser(share, "터널 데이터 내보내기"))
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), e.message ?: "내보내기에 실패했습니다.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** 고른 파일을 먼저 읽어 검증하고, 개수를 보여 준 뒤 확인을 받아 적용한다. */
+    private fun onTacPicked(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val pkg = try {
+                TunnelDataIO.read(requireContext(), uri)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), e.message ?: "파일을 읽을 수 없습니다.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            val created = if (pkg.createdMs > 0) {
+                SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(pkg.createdMs))
+            } else "알 수 없음"
+            AlertDialog.Builder(requireContext())
+                .setTitle("터널 데이터 가져오기")
+                .setMessage(
+                    "터널 ${pkg.tunnels.size}개, 접근도로 ${pkg.approaches.size}개로 교체합니다.\n" +
+                        "(파일 생성일: $created)\n\n" +
+                        "기존 터널·접근도로 데이터는 삭제됩니다. 이벤트 로그와 설정은 유지됩니다."
+                )
+                .setPositiveButton("가져오기") { _, _ ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        try {
+                            TunnelDataIO.apply(requireContext(), pkg)
+                            Toast.makeText(
+                                requireContext(),
+                                "가져오기 완료: 터널 ${pkg.tunnels.size}개 (감지 중이면 정지 후 다시 시작하세요)",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(requireContext(), "적용에 실패했습니다: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show()
+        }
     }
 
     private fun refreshTunnelCount(tv: TextView) {

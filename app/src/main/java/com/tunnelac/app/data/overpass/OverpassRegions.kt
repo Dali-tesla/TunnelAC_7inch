@@ -25,18 +25,21 @@ object OverpassRegions {
      * 덜 겪는다. 서울 등 도로 밀도가 높은 지역까지 고려해 기본값을 1.0으로 낮췄다.
      */
     fun koreaGrid(cellSizeDeg: Double = 1.0): List<BoundingBox> {
-        val boxes = mutableListOf<BoundingBox>()
+        // 위도 행 단위로 만들고, 북쪽(위) 행부터 받도록 행 순서를 뒤집는다(각 행 안에서는 서 -> 동).
+        val rows = mutableListOf<List<BoundingBox>>()
         var lat = MIN_LAT
         while (lat < MAX_LAT) {
             val latEnd = minOf(lat + cellSizeDeg, MAX_LAT)
+            val row = mutableListOf<BoundingBox>()
             var lon = MIN_LON
             while (lon < MAX_LON) {
                 val lonEnd = minOf(lon + cellSizeDeg, MAX_LON)
-                boxes.add(BoundingBox(lat, latEnd, lon, lonEnd))
+                row.add(BoundingBox(lat, latEnd, lon, lonEnd))
                 lon += cellSizeDeg
             }
+            rows.add(row)
             lat += cellSizeDeg
         }
-        return boxes
+        return rows.reversed().flatten()
     }
 }

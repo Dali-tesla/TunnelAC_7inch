@@ -31,7 +31,10 @@ class TunnelEngine(
             val visitedTunnelIds: MutableSet<Long>,
             var hasEnteredCorridor: Boolean,
             /** 상태 시작(진입/병합) 시점의 다음 터널 입구까지 거리. 접근 중 이보다 크게 멀어지면 엉뚱한 길로 빠진 것으로 본다. */
-            val approachRefDistM: Double
+            val approachRefDistM: Double,
+            /** 인접도로가 터널선보다 확실히 가까운 상태가 연속된 횟수와 그 시작 위치(옆도로 주행 판정용). */
+            var adjStreak: Int = 0,
+            var adjStart: LatLon? = null
         ) : InternalState()
     }
 
@@ -85,7 +88,79 @@ class TunnelEngine(
         }
     }
 
+    /** 최근 이동 경로(오래된 -> 최신). 진입 판정 때 "접근도로를 달려왔는지" 확인하는 데 쓴다. */
+    private val history = ArrayList<ApproachMatcher.HistPt>()
+    private var lastHistFixMs = 0L
+
+    private fun recordHistory(fix: VehicleFix) {
+        if (!fix.hasFix || fix.accuracyM > HISTORY_MAX_ACC_M) return
+        val last = history.lastOrNull()
+        // 신호가 오래 끊겼다가 돌아온 경우 경로가 이어지지 않으므로 이력을 비운다(정차 중에는 비우지 않는다).
+        if (last != null && fix.timeMs - lastHistFixMs > HISTORY_GAP_MS) history.clear()
+        lastHistFixMs = fix.timeMs
+        val prev = history.lastOrNull()
+        if (prev != null && GeoMath.distanceMeters(prev.ll(), fix.toLatLon()) < HISTORY_MIN_STEP_M) return
+        history.add(ApproachMatcher.HistPt(fix.lat, fix.lon, fix.accuracyM, fix.timeMs))
+        // 최근 HISTORY_KEEP_M 만 남긴다.
+        var acc = 0.0
+        var cut = 0
+        for (i in history.size - 1 downTo 1) {
+            acc += GeoMath.distanceMeters(history[i - 1].ll(), history[i].ll())
+            if (acc > HISTORY_KEEP_M) { cut = i - 1; break }
+        }
+        if (cut > 0) history.subList(0, cut).clear()
+    }
+
+    /**
+     * 지도에서 받아 둔 접근도로와 최근 경로를 맞춰, 터널 입구로 달려온 것인지 확인한다.
+     * 접근도로 데이터가 없거나 이력이 짧아 판단할 수 없으면 true(기존 방식: 거리·방향만으로 판정).
+     */
+    private fun approachAllows(tunnel: TunnelSegment, end: LatLon, bearing: Double): Boolean {
+        val paths = tunnel.approachesFor(end)
+        if (paths.isEmpty() || paths.maxOf { it.lengthM } < APPROACH_MIN_USABLE_M) return true // 데이터 없음·너무 짧음: 기존 방식
+        val endIdx = if (end == tunnel.points.first()) 0 else 1
+        return ApproachMatcher.matches(
+            history, bearing, paths, tunnel.points, endIdx,
+            APPROACH_TOL_M, APPROACH_MIN_RUN_M, APPROACH_HEADING_DEG
+        ) ?: true
+    }
+
+    /** 진입 판정 근거를 로그용 문자열로 만든다(접근도로·인접도로까지 현재 거리). */
+    private fun entryBasis(tunnel: TunnelSegment, end: LatLon, pos: LatLon): String {
+        val paths = tunnel.approachesFor(end)
+        val ap = if (paths.isEmpty()) null else ApproachMatcher.minDist(pos, paths.map { it.points })
+        val aj = if (tunnel.adjacent.isEmpty()) null else ApproachMatcher.minDist(pos, tunnel.adjacent)
+        val apS = when {
+            paths.isEmpty() -> "접근도로 없음"
+            paths.maxOf { it.lengthM } < APPROACH_MIN_USABLE_M -> "접근도로 짧음(검사생략)"
+            else -> "접근도로 ${ap?.let { "%.0f".format(it) } ?: "-"}m"
+        }
+        return "근거: $apS, 인접도로 ${aj?.let { "%.0f".format(it) + "m" } ?: "없음"}"
+    }
+
+    /** 최근 경로가 접근도로보다 인접도로에 더 가까웠다면 true(진입 불가). 데이터가 없으면 false. */
+    private fun adjacentBlocksEntry(tunnel: TunnelSegment, end: LatLon): Boolean {
+        if (tunnel.adjacent.isEmpty()) return false
+        val paths = tunnel.approachesFor(end)
+        if (paths.isEmpty() || paths.maxOf { it.lengthM } < APPROACH_MIN_USABLE_M) return false
+        val targets = paths.map { it.points }
+        return ApproachMatcher.adjacentDominatesRecent(
+            history, targets, tunnel.adjacent,
+            ADJ_ENTRY_WINDOW_M, ADJ_ENTRY_RATIO, ADJ_ENTRY_MIN_PTS, ADJ_MARGIN_MIN_M, ADJ_MARGIN_ACC_FACTOR
+        )
+    }
+
+    /** 터널 도로에 "들어섰다"고 보려면, 진행 방향이 그 지점 터널 진행 방향과 비슷해야 한다(위를 가로지르는 도로 제외). */
+    private fun headingAlongTunnelOk(fix: VehicleFix, s: InternalState.InTunnel): Boolean {
+        val b = fix.bearingDeg?.toDouble() ?: return true
+        if (fix.speedKmh < config.minSpeedKmh) return true // 저속에서는 방위가 불안정
+        val hit = ApproachMatcher.nearest(fix.toLatLon(), s.tunnel.points) ?: return true
+        val travel = if (s.nearEnd == s.tunnel.points.first()) hit.bearingDeg else (hit.bearingDeg + 180.0) % 360.0
+        return GeoMath.angleDiffDeg(b, travel) <= HEADING_ALONG_TUNNEL_DEG
+    }
+
     suspend fun onFix(fix: VehicleFix) {
+        recordHistory(fix)
         if (state is InternalState.Idle) maybePrepare(fix)
         val p = pendingMode
         if (p != null && fix.timeMs - lastAttemptMs >= RETRY_INTERVAL_MS) sendMode(p, fix.timeMs)
@@ -105,6 +180,8 @@ class TunnelEngine(
             for (end in tunnel.nearEndCandidates) {
                 val dist = GeoMath.distanceMeters(pos, end)
                 if (dist > config.entryTriggerM) continue
+                // 출구 전용 끝(반대쪽에만 접근도로가 있음)으로는 진입하지 않는다.
+                if (tunnel.isExitOnlyEnd(end)) continue
 
                 val bearingToEnd = GeoMath.bearingDeg(pos, end)
                 val vehicleBearing = fix.bearingDeg?.toDouble()
@@ -114,6 +191,12 @@ class TunnelEngine(
 
                 // 터널 진행 방향 검사: 입구 근처를 직각/크게 비스듬히 지나는 다른 도로는 진입으로 보지 않는다.
                 if (GeoMath.angleDiffDeg(vehicleBearing, tunnel.directionBearingFrom(end)) > config.headingToleranceDeg) continue
+
+                // 지도의 접근도로 확인: 최근 경로가 입구로 이어지는 도로 위를 달려온 경우만 진입으로 본다.
+                // (옆길·교차 도로 위를 지나치는 경우를 걸러낸다. 데이터가 없으면 이 검사는 건너뛴다.)
+                if (!approachAllows(tunnel, end, vehicleBearing)) continue
+                // 접근도로보다 인접도로(옆도로)가 확실히 가까운 경로로 달려온 경우는 진입으로 보지 않는다.
+                if (adjacentBlocksEntry(tunnel, end)) continue
 
                 // 참고: 접근도로는 터널 폴리라인에 포함되지 않으므로(터널 구간만 매핑됨),
                 // 여기서 도로 근접 허용치(corridor)를 검사하면 입구 바로 앞에서만 조건을
@@ -157,7 +240,7 @@ class TunnelEngine(
                         gpsAccuracyM = fix.accuracyM,
                         hvacBefore = preHvac,
                         hvacAfter = postHvac,
-                        hvacNote = failNote(),
+                        hvacNote = listOfNotNull(entryBasis(tunnel, end, pos), failNote()).joinToString(" / "),
                         carRecircBefore = when (carBefore) { true -> 1; false -> 0; null -> -1 }
                     )
                 )
@@ -176,8 +259,41 @@ class TunnelEngine(
             // 한 번이라도 터널 도로(폴리라인) 근접 범위에 들어온 뒤부터만 코스 이탈 감지를
             // 적용한다 — 그 전에는 아직 접근 중인 것뿐이므로 감시하지 않는다.
             val corridorDeviationM = GeoMath.distancePointToPolylineMeters(fix.toLatLon(), s.tunnel.points)
-            if (!s.hasEnteredCorridor && corridorDeviationM <= config.corridorWidthM) {
+            if (!s.hasEnteredCorridor && corridorDeviationM <= config.corridorWidthM && headingAlongTunnelOk(fix, s)) {
                 s.hasEnteredCorridor = true
+            }
+
+            // 인접도로(옆도로)가 터널선보다 확실히 가까운 상태가 이어지면 옆도로를 달리는 것으로 보고 안전 진출한다.
+            // GPS 정확도가 좋을 때만 비교한다(터널 안 불안정한 위치로 잘못 취소하지 않기 위함).
+            if (s.hasEnteredCorridor && s.tunnel.adjacent.isNotEmpty() && fix.accuracyM <= ADJ_MAX_ACC_M) {
+                val pos = fix.toLatLon()
+                val dAdj = ApproachMatcher.minDist(pos, s.tunnel.adjacent)
+                val margin = ApproachMatcher.adjMargin(fix.accuracyM.toDouble(), ADJ_MARGIN_MIN_M, ADJ_MARGIN_ACC_FACTOR)
+                if (dAdj != null && dAdj < corridorDeviationM - margin) {
+                    if (s.adjStreak == 0) s.adjStart = pos
+                    s.adjStreak++
+                    val travel = s.adjStart?.let { GeoMath.distanceMeters(it, pos) } ?: 0.0
+                    if (s.adjStreak >= ADJ_EXIT_STREAK && travel >= ADJ_EXIT_MIN_TRAVEL_M) {
+                        finishTunnel(
+                            fix, s, EngineEventType.SAFETY_EXIT, corridorDeviationM - dAdj,
+                            "인접도로 우세: 터널선 ${corridorDeviationM.toInt()}m / 인접도로 ${dAdj.toInt()}m"
+                        )
+                        return
+                    }
+                } else {
+                    s.adjStreak = 0
+                    s.adjStart = null
+                }
+            }
+
+            // 터널 중간부에서 옆으로 크게 벗어났다면(터널 위를 가로지르는 도로 등) 곧바로 안전 진출 처리한다.
+            // 터널 양 끝을 지난 뒤의 정상 진출 구간은 제외한다(진출 판정이 따로 있음).
+            if (s.hasEnteredCorridor && corridorDeviationM > MID_TUNNEL_DEVIATION_M) {
+                val prog = progressAlongTunnelMeters(fix.toLatLon(), s)
+                if (prog > END_EPS_M && prog < s.tunnel.lengthM - END_EPS_M) {
+                    finishTunnel(fix, s, EngineEventType.SAFETY_EXIT, corridorDeviationM)
+                    return
+                }
             }
 
             // 접근 중(아직 터널 도로에 못 들어섬)인데 입구에서 시작 거리보다 크게 멀어졌다면
@@ -292,7 +408,8 @@ class TunnelEngine(
         fix: VehicleFix,
         s: InternalState.InTunnel,
         type: EngineEventType,
-        distancePastExitM: Double
+        distancePastExitM: Double,
+        note: String? = null
     ) {
         val before = hvacController.getCurrentState()
         // 진출 시에는 설정된 모드(기본 AUTO, 사용자가 외기로 변경 가능)로 전환한다.
@@ -314,7 +431,7 @@ class TunnelEngine(
                 gpsAccuracyM = fix.accuracyM,
                 hvacBefore = before,
                 hvacAfter = after,
-                hvacNote = failNote()
+                hvacNote = listOfNotNull(note, failNote()).joinToString(" / ").ifEmpty { null }
             )
         )
         state = InternalState.Idle
@@ -391,5 +508,31 @@ class TunnelEngine(
         /** 입구를 이만큼(m) 지났는데도 터널선에서 [ENTRY_CANCEL_DEVIATION_M] 넘게 떨어져 있으면 진입을 취소한다. */
         private const val ENTRY_CONFIRM_PROGRESS_M = 50.0
         private const val ENTRY_CANCEL_DEVIATION_M = 90.0
+        /** 터널 중간부에서 터널선으로부터 이만큼(m) 넘게 떨어지면 터널을 벗어난 것으로 본다(GPS 정상일 때). */
+        private const val MID_TUNNEL_DEVIATION_M = 80.0
+        /** 터널 도로에 들어섰다고 인정하는 진행 방향 차이(도). */
+        private const val HEADING_ALONG_TUNNEL_DEG = 30.0
+        /** 주행 이력: 이 정확도(m) 이하 fix 만 쓰고, 최근 [HISTORY_KEEP_M] m 만 유지한다. */
+        private const val HISTORY_MAX_ACC_M = 30f
+        private const val HISTORY_KEEP_M = 600.0
+        private const val HISTORY_MIN_STEP_M = 3.0
+        private const val HISTORY_GAP_MS = 30_000L
+        /** 접근도로 일치 판정: 허용 거리(m), 연속 일치 최소 길이(m), 방향 허용(도). */
+        private const val APPROACH_TOL_M = 15.0
+        private const val APPROACH_MIN_RUN_M = 60.0
+        private const val APPROACH_HEADING_DEG = 35.0
+        /** 입구의 가장 긴 접근도로가 이 길이(m) 미만이면 데이터가 불완전한 것으로 보고 접근도로·인접도로 검사를 건너뛴다. */
+        private const val APPROACH_MIN_USABLE_M = 100.0
+        /** 인접도로 비교: 여유 거리 = max(최소값, 정확도 x 계수). */
+        private const val ADJ_MARGIN_MIN_M = 5.0
+        private const val ADJ_MARGIN_ACC_FACTOR = 0.5
+        /** 진입 판정: 최근 이 거리(m) 구간에서 인접도로가 더 가까운 점이 이 비율을 넘고, 점이 이 개수 이상이면 진입 불가. */
+        private const val ADJ_ENTRY_WINDOW_M = 100.0
+        private const val ADJ_ENTRY_RATIO = 0.5
+        private const val ADJ_ENTRY_MIN_PTS = 3
+        /** 진입 후: 이 정확도(m) 이하 fix 에서만 비교하고, 연속 횟수와 이동 거리가 모두 넘으면 안전 진출. */
+        private const val ADJ_MAX_ACC_M = 25f
+        private const val ADJ_EXIT_STREAK = 3
+        private const val ADJ_EXIT_MIN_TRAVEL_M = 30.0
     }
 }
